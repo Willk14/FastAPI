@@ -22,6 +22,7 @@ class User(Base):
     email = Column(String, nullable=False)
     password = Column(String, nullable=False)
     created_at = Column(TIMESTAMP(timezone=True))
+    phone_number = Column(String)
 
 class Vote(Base):
     __tabkename__ = "user"

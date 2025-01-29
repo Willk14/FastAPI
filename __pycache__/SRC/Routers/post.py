@@ -1,8 +1,9 @@
-        from fastapi import fastAPI, Response, status, HTTPException, Depends, APIRouter
+from fastapi import fastAPI, Response, status, HTTPException, Depends, APIRouter
 from sqlalchemy.orm import Session, session
 from ..import models, schemas, utils, oAuth2, oath2
 from ..database import get_db
 from typing import List, Optional
+from sqlalchemy import func
 
 
 
@@ -21,10 +22,11 @@ def create_post(post: schemas.CreatePost, response_model=schemas.Post, db: Sessi
     db.commit()
     db.refresh(new_posts)
 
-@router.get("/{id}", response_model=List[schemas.Post])
+@router.get("/{id}", response_model=List[schemas.PostOut])
 async def get_posts(db: Session = Depends(get_db), current_user: int = Depends(oAuth2.get_current_user), Limit: int = 10, skip: int = 0, search: Optional[str] = ""):
     print(Limit)
-    posts = db.query(models.Post.title.contains(search)).filter(models).limit(Limit).offset(skip).all()
+    # posts = db.query(models.Post.title.contains(search)).filter(models).limit(Limit).offset(skip).all()
+    posts = db.query(models.post, func.count(models.Vote.Post.id.label("Votes"), isouter = True).group_by(models.post.id).filter(models.Post.title.contains(search)).filter(models).limit(Limit).offset(skip).all())
     # When skipping we use the offset functionality
     
     return posts
@@ -34,6 +36,7 @@ async def get_posts(db: Session = Depends(get_db), current_user: int = Depends(o
 def get_posts(id:int, db: Session = Depends(get_db), current_user: int = Depends(oAuth2.get_current_user)):
     print(current_user.id)
     post = db.query(models.Post).filter(models.Post.owner_id == current_user.id).all()
+    post = db.query(models.post, func.count(models.Vote.Post.id.label("Votes"), isouter = True).group_by(models.post.id))
 
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with id: {id} was not found")
